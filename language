@@ -1,0 +1,7 @@
+-- he knows nat, +
+Add := \x y. + x y
+A := (\x. x x)(y)
+B := A
+main(7) := A
+
+-- (main) args[1]
