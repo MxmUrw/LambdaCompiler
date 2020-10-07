@@ -1,17 +1,16 @@
 module Ast where
 
-open import Agda.Builtin.Bool public
-open import Agda.Builtin.List public
-open import Agda.Builtin.String public
-open import Agda.Builtin.Nat public
+open import Data.List using (List)
+open import Data.String using (String)
+open import Data.Nat using (ℕ)
 
-Arity = Nat
+Arity = ℕ
 
 data Term : Set where
   Abstraction : String -> Term -> Term
   Apply : Term -> Term -> Term
   Var : String -> Term
-  Int : Nat -> Term
+  Int : ℕ -> Term
 
 
 data Item : Set where
