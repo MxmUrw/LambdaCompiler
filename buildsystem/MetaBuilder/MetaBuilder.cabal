@@ -1,0 +1,64 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: d8036cf382d83ee60edf1599652a13f55070e34888bb179b75f2f86a2a7e9c90
+
+name:           MetaBuilder
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/MetaBuilder#readme>
+homepage:       https://github.com/githubuser/MetaBuilder#readme
+bug-reports:    https://github.com/githubuser/MetaBuilder/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/MetaBuilder
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_MetaBuilder
+  hs-source-dirs:
+      src
+  default-extensions: DuplicateRecordFields
+  build-depends:
+      base >=4.7 && <5
+    , directory
+    , filemanip
+    , shake
+    , text
+  default-language: Haskell2010
+
+executable metabuild
+  main-is: Main.hs
+  other-modules:
+      Paths_MetaBuilder
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      MetaBuilder
+    , base >=4.7 && <5
+    , shake
+  default-language: Haskell2010
+
+test-suite MetaBuilder-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_MetaBuilder
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      MetaBuilder
+    , base >=4.7 && <5
+  default-language: Haskell2010

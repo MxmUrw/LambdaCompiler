@@ -1,0 +1,3 @@
+name: LambdaCompiler
+include: source
+depend: standard-library
