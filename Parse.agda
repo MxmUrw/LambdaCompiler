@@ -26,11 +26,15 @@ len (x ∷ l) = suc (len l)
 
 Str = List Char
 
+record ParserResult (T : Set) : Set where
+  field value : T
+  field remaining : Str
+
 Parser : (A : Set) -> Set
-Parser x = Str -> Maybe x
+Parser x = Str -> Maybe (ParserResult x)
 
 parse-str : Str -> Parser ⊤
-parse-str [] payload = just tt
+parse-str [] payload = just (record { value = tt; remaining = payload })
 parse-str (x ∷ _) [] = nothing
 parse-str (x ∷ pat) (y ∷ payload) with x == y
 ... | true = parse-str pat payload
@@ -52,29 +56,32 @@ char→ℕ '8' = just 8
 char→ℕ '9' = just 9
 char→ℕ _ = nothing
 
-parse-digit-seq : Str -> List ℕ
-parse-digit-seq [] = []
-parse-digit-seq (c ∷ xs) = unwrap-or (Data.Maybe.map (λ x -> x ∷ parse-digit-seq xs) (char→ℕ c)) []
+parse-digit-seq : Str -> ParserResult (List ℕ)
+parse-digit-seq [] = record { value = []; remaining = [] }
+parse-digit-seq (c ∷ xs) = unwrap-or (Data.Maybe.map (λ x -> let rest = parse-digit-seq xs in record { value = x ∷ ParserResult.value rest; remaining = ParserResult.remaining rest }) (char→ℕ c)) record { value = []; remaining = (c ∷ xs) } -- well, this is kinda ugly
 
 parse-ℕ-helper : List ℕ -> Maybe ℕ
 parse-ℕ-helper [] = nothing
 parse-ℕ-helper (x ∷ xs) = just (x * (pow 10 (len xs)) + (unwrap-or (parse-ℕ-helper xs) 0))
 
 parse-ℕ : Parser ℕ
-parse-ℕ x = parse-ℕ-helper (parse-digit-seq x)
+parse-ℕ x = (λ a -> Data.Maybe.map (λ b -> record { value = b; remaining = ParserResult.remaining a}) (parse-ℕ-helper (ParserResult.value a))) (parse-digit-seq x)
 
+{-
 parse-term : Parser Ast.Term
 parse-term = {!!}
 
--- parse-main : Parser Ast.Item
--- parse-main = (parse-string "main(", parse-num, parse-string ") := ", parse-term)
+parse-main : Parser Ast.Item
+parse-main = (parse-string "main(", parse-num, parse-string ") := ", parse-term)
 
--- parse-let : Parser Ast.Item
--- parse-let = {!!}
+parse-let : Parser Ast.Item
+parse-let = {!!}
 
 
--- parse-impl : List Ast.Item -> Parser Ast.Program
--- parse-impl x = {!!}
+parse-impl : List Ast.Item -> Parser Ast.Program
+parse-impl x = {!!}
 
--- parse : Parser Ast.Program
--- parse = parse-impl []
+parse : Parser Ast.Program
+parse = parse-impl []
+
+-}
