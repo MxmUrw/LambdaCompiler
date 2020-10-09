@@ -1,6 +1,6 @@
 module Parser.Parse where
 
-import Parser.Ast
+import Parser.Ast as Ast
 open import Data.Nat using (ℕ; _+_; _*_; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -87,18 +87,30 @@ parse-ℕ-helper (x ∷ xs) = just (x * (pow 10 (len xs)) + (unwrap-or (parse-�
 parse-ℕ : Parser ℕ
 parse-ℕ x = (λ a -> Data.Maybe.map (λ b -> record { value = b; remaining = ParserResult.remaining a}) (parse-ℕ-helper (ParserResult.value a))) (parse-digit-seq x) -- I should use ParserResult-map
 
-parse-seq : {T1 T2 Out : Set} -> Parser T1 -> Parser T2 -> (T1 -> T2 -> Out) -> Parser Out
-parse-seq {T1} {T2} {Out} p1 p2 f str = Data.Maybe.map (ParserResult-map (λ x -> f (Pair.fst x) (Pair.snd x))) (apply-maybe (p1 str) p2)
+parse-2 : {T1 T2 Out : Set} -> Parser T1 -> Parser T2 -> (T1 -> T2 -> Out) -> Parser Out
+parse-2 {T1} {T2} {Out} p1 p2 f str = Data.Maybe.map (ParserResult-map (λ x -> f (Pair.fst x) (Pair.snd x))) (apply-maybe (p1 str) p2)
 
 -- would be nice to generalise this using variadic generics; Is this possible?
--- parse-5 : {T1 T2 T3 T4 T5 : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> Parser T4 -> Parser T5 -> Parser
+parse-3 : {T1 T2 T3 Out : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> (T1 -> T2 -> T3 -> Out) -> Parser Out
+parse-3 {T1} {T2} {T3} {Out} p1 p2 p3 f =
+                                    let p12 = (parse-2 {T1} {T2} {Pair T1 T2} p1 p2 (λ x y -> x , y)) in
+                                    parse-2 p12 p3 (λ pair v3 -> f (Pair.fst pair) (Pair.snd pair) v3)
 
-{-
+
+parse-4 : {T1 T2 T3 T4 Out : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> Parser T4 -> (T1 -> T2 -> T3 -> T4 -> Out) -> Parser Out
+parse-4 {T1} {T2} {T3} {T4} {Out} p1 p2 p3 p4 f =
+                                        let p12 = (parse-2 {T1} {T2} {Pair T1 T2} p1 p2 (λ x y -> x , y)) in
+                                        let p34 = (parse-2 {T3} {T4} {Pair T3 T4} p3 p4 (λ x y -> x , y)) in
+                                                  parse-2 p12 p34 (λ pair12 pair34 -> f (Pair.fst pair12) (Pair.snd pair12) (Pair.fst pair34) (Pair.snd pair34))
+
 parse-term : Parser Ast.Term
 parse-term = {!!}
 
 parse-main : Parser Ast.Item
-parse-main = (parse-string "main(", parse-num, parse-string ") := ", parse-term)
+parse-main = parse-4 (parse-string "main(") parse-ℕ (parse-string ") := ") parse-term (λ _ arity _ term -> Ast.Main arity term)
+
+{-
+
 
 parse-let : Parser Ast.Item
 parse-let = {!!}
