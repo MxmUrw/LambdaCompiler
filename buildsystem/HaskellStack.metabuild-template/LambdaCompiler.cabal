@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c6cd3f1abcd2b2546d5fa0d0d0830304b52d67c2e24b9d0f93f7ac68227bd63a
+-- hash: 2dcc0d71d62dbaf19686c238febb08522019d5264266271202cec9f9e9eff8b2
 
 name:           LambdaCompiler
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , ieee
     , text
   default-language: Haskell2010
 
