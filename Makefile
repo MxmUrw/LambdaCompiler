@@ -1,20 +1,5 @@
 
 
-# all: metabuild
-# 	./_build/bin/metabuild
-
-# clean: metabuild
-# 	./_build/bin/metabuild clean
-
-# run: all
-# 	./_build/bin/lambdac
-
-# metabuild:
-# 	cd buildsystem/MetaBuilder; \
-# 	stack install --local-bin-path=../../_build/bin
-
-# .PHONY: build_all clean run metabuild
-
 all: rebuild_metabuild
 	./_build/bin/metabuild
 

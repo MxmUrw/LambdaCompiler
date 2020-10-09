@@ -43,11 +43,6 @@ filterRoot file = takeExtension file == ".metabuild-root"
 
 findProjectRootFile_impl :: FilePath -> IO FilePath
 findProjectRootFile_impl cur_dir = do
-  -- roots <- FP.find (return False) (do
-  --                               ext <- extension
-  --                               return (ext == ".metabuild-root")) cur_dir
-
-  -- roots <- FP.find (return True) (return True) cur_dir
   files <- listDirectory cur_dir
   let filtered = filter filterRoot files
   case filtered of
@@ -164,18 +159,6 @@ deriveExtraProjectConfig_Global root gpc =
      , buildAbDir = buildAbDir
      , binAbDir   = binAbDir
      }
--- deriveExtraProjectConfig :: FilePath -> ProjectConfig -> ExtraProjectConfig
--- deriveExtraProjectConfig root pc =
---   let buildAbDir = root </> pc.>buildRelDir
---       binAbDir   = root </> pc.>binRelDir
-
---       extraAgdaProject = deriveExtraProjectConfig_Agda root (pc.>agdaProject)
-
---   in ExtraProjectConfig
---      { buildAbDir       = buildAbDir
---      , binAbDir         = binAbDir
---      , extraAgdaProject = extraAgdaProject
---      }
 
 deriveExtraCollection :: FilePath -> Collection -> ExtraCollection
 deriveExtraCollection root c =
@@ -224,12 +207,10 @@ makeRules_AgdaProject egpc eapc = do
   let transpilationTarget_Files = ((\f -> eapc.>transpilationTarget_AbDir </> f -<.> ".hs") <$> transpilation_Files)
 
   eapc.>agdaBin_AbFile %> \a -> do
-    -- _ <- getDirectoryFiles (eapc.>haskellStack_TemplateSource_AbDir) ["//*.hs", "//*.yaml"] -- needed for tracking the file list
     need (transpilationTarget_Files ++ haskellStack_TemplateTarget_Files)
     cmd_ "stack" (Cwd (eapc.>haskellStack_TemplateTarget_AbDir)) ["install", "--local-bin-path=" ++ egpc.>binAbDir]
 
   transpilationTarget_Files &%> \files -> do
-    -- _ <- getDirectoryFiles (eapc.>transpilationSource_AbDir) ["//*.agda"] -- needed for tracking the file list
     need transpilationSource_Files
     need [eapc.>ghcshim_AbFile]
     let ghc_shimpath = takeDirectory (eapc.>ghcshim_AbFile)
