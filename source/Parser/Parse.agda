@@ -1,7 +1,7 @@
 module Parser.Parse where
 
 import Parser.Ast as Ast
-open import Parser.Token using (Token; Str; tokenize)
+open import Parser.Token using (Token; Str; tokenize; unwrap-or)
 open import Data.Nat using (ℕ; _+_; _*_; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -12,10 +12,6 @@ open import Data.String using (String; toList)
 open import Foreign.Haskell.Pair using (Pair; _,_)
 
 -- does this exist in the stdlib?
-unwrap-or : {T : Set} -> Maybe T -> T -> T
-unwrap-or (just x) _ = x
-unwrap-or nothing fallback = fallback
-
 pow : ℕ -> ℕ -> ℕ
 pow x 0 = 1
 pow x (suc exp) = x * pow x exp
