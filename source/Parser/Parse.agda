@@ -42,8 +42,11 @@ Parser x = Str -> Maybe (ParserResult x)
 ParserResult-map : {T Out : Set} -> (T -> Out) -> ParserResult T -> ParserResult Out
 ParserResult-map {T} {Out} f r = record { value = f (ParserResult.value r); remaining = ParserResult.remaining r}
 
+Maybe-ParserResult-map : {T Out : Set} -> (T -> Out) -> Maybe (ParserResult T) -> Maybe (ParserResult Out)
+Maybe-ParserResult-map {T} {Out} f = Data.Maybe.map (ParserResult-map f)
+
 apply : {T1 T2 : Set} -> ParserResult T1 -> Parser T2 -> Maybe (ParserResult (Pair T1 T2))
-apply {T1} {T2} r p = Data.Maybe.map (λ x -> record { value = ParserResult.value r , ParserResult.value x; remaining = ParserResult.remaining x }) (p (ParserResult.remaining r))
+apply {T1} {T2} r p = Maybe-ParserResult-map (λ x -> ParserResult.value r , x) (p (ParserResult.remaining r))
 
 apply-maybe : {T1 T2 : Set} -> Maybe (ParserResult T1) -> Parser T2 -> Maybe (ParserResult (Pair T1 T2))
 apply-maybe nothing _ = nothing
