@@ -99,8 +99,8 @@ parse-3 {T1} {T2} {T3} {Out} p1 p2 p3 f =
 
 parse-4 : {T1 T2 T3 T4 Out : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> Parser T4 -> (T1 -> T2 -> T3 -> T4 -> Out) -> Parser Out
 parse-4 {T1} {T2} {T3} {T4} {Out} p1 p2 p3 p4 f =
-                                        let p12 = (parse-2 {T1} {T2} {Pair T1 T2} p1 p2 (λ x y -> x , y)) in
-                                        let p34 = (parse-2 {T3} {T4} {Pair T3 T4} p3 p4 (λ x y -> x , y)) in
+                                        let p12 = (parse-2 {T1} {T2} {Pair T1 T2} p1 p2 (_,_)) in
+                                        let p34 = (parse-2 {T3} {T4} {Pair T3 T4} p3 p4 (_,_)) in
                                                   parse-2 p12 p34 (λ pair12 pair34 -> f (Pair.fst pair12) (Pair.snd pair12) (Pair.fst pair34) (Pair.snd pair34))
 
 parse-term : Parser Ast.Term
