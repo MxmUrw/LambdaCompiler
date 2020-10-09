@@ -1,4 +1,4 @@
-module Ast where
+module Parser.Ast where
 
 open import Data.List using (List)
 open import Data.String using (String)

@@ -1,6 +1,6 @@
-module Parse where
+module Parser.Parse where
 
-import Ast
+import Parser.Ast
 open import Data.Nat using (ℕ; _+_; _*_; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
