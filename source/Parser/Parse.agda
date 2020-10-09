@@ -1,6 +1,7 @@
 module Parser.Parse where
 
 import Parser.Ast as Ast
+open import Parser.Token using (Token; Str; tokenize)
 open import Data.Nat using (ℕ; _+_; _*_; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -29,8 +30,6 @@ and {T1} {T2} nothing (just y) = nothing
 and {T1} {T2} (just x) nothing = nothing
 and {T1} {T2} (just x) (just y) = just (x , y)
 ----------------------------------
-
-Str = List Char
 
 record ParserResult (T : Set) : Set where
   field value : T
@@ -75,6 +74,7 @@ char→ℕ '7' = just 7
 char→ℕ '8' = just 8
 char→ℕ '9' = just 9
 char→ℕ _ = nothing
+
 
 parse-digit-seq : Str -> ParserResult (List ℕ)
 parse-digit-seq [] = record { value = []; remaining = [] }
