@@ -8,7 +8,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Char using (Char; _==_)
 open import Data.Bool using (Bool; true; false)
 open import Data.String using (String; toList)
-
+open import Foreign.Haskell.Pair using (Pair; _,_)
 
 -- does this exist in the stdlib?
 unwrap-or : {T : Set} -> Maybe T -> T -> T
@@ -22,6 +22,12 @@ pow x (suc exp) = x * pow x exp
 len : {T : Set} -> List T -> ℕ
 len [] = 0
 len (x ∷ l) = suc (len l)
+
+and : {T1 T2 : Set} -> Maybe T1 -> Maybe T2 -> Maybe (Pair T1 T2)
+and {T1} {T2} nothing nothing = nothing
+and {T1} {T2} nothing (just y) = nothing
+and {T1} {T2} (just x) nothing = nothing
+and {T1} {T2} (just x) (just y) = just (x , y)
 ----------------------------------
 
 Str = List Char
@@ -32,6 +38,17 @@ record ParserResult (T : Set) : Set where
 
 Parser : (A : Set) -> Set
 Parser x = Str -> Maybe (ParserResult x)
+
+ParserResult-map : {T Out : Set} -> (T -> Out) -> ParserResult T -> ParserResult Out
+ParserResult-map {T} {Out} f r = record { value = f (ParserResult.value r); remaining = ParserResult.remaining r}
+
+apply : {T1 T2 : Set} -> ParserResult T1 -> Parser T2 -> Maybe (ParserResult (Pair T1 T2))
+apply {T1} {T2} r p = Data.Maybe.map (λ x -> record { value = ParserResult.value r , ParserResult.value x; remaining = ParserResult.remaining x }) (p (ParserResult.remaining r))
+
+apply-maybe : {T1 T2 : Set} -> Maybe (ParserResult T1) -> Parser T2 -> Maybe (ParserResult (Pair T1 T2))
+apply-maybe nothing _ = nothing
+apply-maybe (just x) = apply x
+
 
 parse-str : Str -> Parser ⊤
 parse-str [] payload = just (record { value = tt; remaining = payload })
@@ -58,14 +75,20 @@ char→ℕ _ = nothing
 
 parse-digit-seq : Str -> ParserResult (List ℕ)
 parse-digit-seq [] = record { value = []; remaining = [] }
-parse-digit-seq (c ∷ xs) = unwrap-or (Data.Maybe.map (λ x -> let rest = parse-digit-seq xs in record { value = x ∷ ParserResult.value rest; remaining = ParserResult.remaining rest }) (char→ℕ c)) record { value = []; remaining = (c ∷ xs) } -- well, this is kinda ugly
+parse-digit-seq (c ∷ xs) = unwrap-or (Data.Maybe.map (λ x -> let rest = parse-digit-seq xs in record { value = x ∷ ParserResult.value rest; remaining = ParserResult.remaining rest }) (char→ℕ c)) record { value = []; remaining = (c ∷ xs) } -- well, this is kinda ugly, I should use ParserResult-map
 
 parse-ℕ-helper : List ℕ -> Maybe ℕ
 parse-ℕ-helper [] = nothing
 parse-ℕ-helper (x ∷ xs) = just (x * (pow 10 (len xs)) + (unwrap-or (parse-ℕ-helper xs) 0))
 
 parse-ℕ : Parser ℕ
-parse-ℕ x = (λ a -> Data.Maybe.map (λ b -> record { value = b; remaining = ParserResult.remaining a}) (parse-ℕ-helper (ParserResult.value a))) (parse-digit-seq x)
+parse-ℕ x = (λ a -> Data.Maybe.map (λ b -> record { value = b; remaining = ParserResult.remaining a}) (parse-ℕ-helper (ParserResult.value a))) (parse-digit-seq x) -- I should use ParserResult-map
+
+parse-seq : {T1 T2 Out : Set} -> Parser T1 -> Parser T2 -> (T1 -> T2 -> Out) -> Parser Out
+parse-seq {T1} {T2} {Out} p1 p2 f str = Data.Maybe.map (ParserResult-map (λ x -> f (Pair.fst x) (Pair.snd x))) (apply-maybe (p1 str) p2)
+
+-- would be nice to generalise this using variadic generics; Is this possible?
+-- parse-5 : {T1 T2 T3 T4 T5 : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> Parser T4 -> Parser T5 -> Parser
 
 {-
 parse-term : Parser Ast.Term
