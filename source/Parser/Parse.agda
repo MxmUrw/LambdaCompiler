@@ -1,7 +1,7 @@
 module Parser.Parse where
 
-import Parser.Ast as Ast
-open import Parser.Token using (Token; Str; tokenize; unwrap-or)
+open import Parser.Ast using (Term; Str)
+open import Parser.Token using (Token; tokenize; _unwrap-or_; _or_; token-example; _M-map_)
 open import Data.Nat using (ℕ; _+_; _*_; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -10,112 +10,84 @@ open import Data.Char using (Char; _==_)
 open import Data.Bool using (Bool; true; false)
 open import Data.String using (String; toList)
 open import Foreign.Haskell.Pair using (Pair; _,_)
+open import Function using (_∘_)
 
--- does this exist in the stdlib?
-pow : ℕ -> ℕ -> ℕ
-pow x 0 = 1
-pow x (suc exp) = x * pow x exp
-
-len : {T : Set} -> List T -> ℕ
-len [] = 0
-len (x ∷ l) = suc (len l)
-
-and : {T1 T2 : Set} -> Maybe T1 -> Maybe T2 -> Maybe (Pair T1 T2)
-and {T1} {T2} nothing nothing = nothing
-and {T1} {T2} nothing (just y) = nothing
-and {T1} {T2} (just x) nothing = nothing
-and {T1} {T2} (just x) (just y) = just (x , y)
-----------------------------------
-
-record ParserResult (T : Set) : Set where
-  field value : T
-  field remaining : Str
+data ParserResult (T : Set) : Set where
+  success : T -> List Token -> ParserResult T
+  error : ParserResult T
 
 Parser : (A : Set) -> Set
-Parser x = Str -> Maybe (ParserResult x)
+Parser x = List Token -> ParserResult x
 
-ParserResult-map : {T Out : Set} -> (T -> Out) -> ParserResult T -> ParserResult Out
-ParserResult-map {T} {Out} f r = record { value = f (ParserResult.value r); remaining = ParserResult.remaining r}
+_PR-map_ : {T Out : Set} -> ParserResult T -> (T -> Out) -> ParserResult Out
+success value remaining PR-map f = success (f value) remaining
+error                   PR-map _ = error
 
-Maybe-ParserResult-map : {T Out : Set} -> (T -> Out) -> Maybe (ParserResult T) -> Maybe (ParserResult Out)
-Maybe-ParserResult-map {T} {Out} f = Data.Maybe.map (ParserResult-map f)
+_PR-or_ : {T : Set} -> ParserResult T -> ParserResult T -> ParserResult T
+success value remaining PR-or _ = success value remaining
+error                   PR-or y = y
+infixl 30 _PR-or_
 
-apply : {T1 T2 : Set} -> ParserResult T1 -> Parser T2 -> Maybe (ParserResult (Pair T1 T2))
-apply {T1} {T2} r p = Maybe-ParserResult-map (λ x -> ParserResult.value r , x) (p (ParserResult.remaining r))
+_P-or_ : {T : Set} -> Parser T -> Parser T -> Parser T
+_P-or_ p1 p2 l = (p1 l) PR-or (p2 l) -- if this is not evaluated laziliy, this will have terrible performance!
+infixl 30 _P-or_
 
-apply-maybe : {T1 T2 : Set} -> Maybe (ParserResult T1) -> Parser T2 -> Maybe (ParserResult (Pair T1 T2))
-apply-maybe nothing _ = nothing
-apply-maybe (just x) = apply x
+{-# TERMINATING #-}
+parse-one : Parser Term
+{-# TERMINATING #-}
+parse-max : Parser Term
 
+-- parse-paren
+parse-paren-helper : ParserResult Term -> ParserResult Term
+parse-paren-helper (success t (RParen ∷ l)) = success t l
+parse-paren-helper _ = error
 
-parse-str : Str -> Parser ⊤
-parse-str [] payload = just (record { value = tt; remaining = payload })
-parse-str (x ∷ _) [] = nothing
-parse-str (x ∷ pat) (y ∷ payload) with x == y
-... | true = parse-str pat payload
-... | false = nothing
+parse-paren : Parser Term
+parse-paren (LParen ∷ l) = parse-paren-helper (parse-max l)
+parse-paren _ = error
+----
 
-parse-string : String -> Parser ⊤
-parse-string x = parse-str (toList x) -- TODO use . instead, when I know where to import it from
+-- parse-abstr
+parse-abstr : Parser Term
+parse-abstr (Token.Backslash ∷ Token.Ident i ∷ Token.Dot ∷ l) = (parse-max l) PR-map (Term.Abstraction i)
+parse-abstr _ = error
+----
 
-char→ℕ : Char -> Maybe ℕ
-char→ℕ '0' = just 0
-char→ℕ '1' = just 1
-char→ℕ '2' = just 2
-char→ℕ '3' = just 3
-char→ℕ '4' = just 4
-char→ℕ '5' = just 5
-char→ℕ '6' = just 6
-char→ℕ '7' = just 7
-char→ℕ '8' = just 8
-char→ℕ '9' = just 9
-char→ℕ _ = nothing
+-- parse-atom
+parse-atom : Parser Term
+parse-atom (Token.Ident i ∷ l) = success (Term.Var i) l
+parse-atom (Token.Nat n ∷ l) = success (Term.Nat n) l
+parse-atom (Token.QuestionMark ∷ Token.Nat n ∷ l) = success (Term.InputVar n) l
+parse-atom _ = error
+----
 
+parse-one = parse-paren P-or parse-abstr P-or parse-atom
 
-parse-digit-seq : Str -> ParserResult (List ℕ)
-parse-digit-seq [] = record { value = []; remaining = [] }
-parse-digit-seq (c ∷ xs) = unwrap-or (Data.Maybe.map (λ x -> let rest = parse-digit-seq xs in record { value = x ∷ ParserResult.value rest; remaining = ParserResult.remaining rest }) (char→ℕ c)) record { value = []; remaining = (c ∷ xs) } -- well, this is kinda ugly, I should use ParserResult-map
+-- parse-max
 
-parse-ℕ-helper : List ℕ -> Maybe ℕ
-parse-ℕ-helper [] = nothing
-parse-ℕ-helper (x ∷ xs) = just (x * (pow 10 (len xs)) + (unwrap-or (parse-ℕ-helper xs) 0))
+loop : Term -> List Token -> ParserResult Term
+loop-helper : Term -> ParserResult Term -> ParserResult Term
 
-parse-ℕ : Parser ℕ
-parse-ℕ x = (λ a -> Data.Maybe.map (λ b -> record { value = b; remaining = ParserResult.remaining a}) (parse-ℕ-helper (ParserResult.value a))) (parse-digit-seq x) -- I should use ParserResult-map
+loop-helper t1 (success t2 l) = loop (Term.Apply t1 t2) l
+loop-helper _ error = error
 
-parse-2 : {T1 T2 Out : Set} -> Parser T1 -> Parser T2 -> (T1 -> T2 -> Out) -> Parser Out
-parse-2 {T1} {T2} {Out} p1 p2 f str = Data.Maybe.map (ParserResult-map (λ x -> f (Pair.fst x) (Pair.snd x))) (apply-maybe (p1 str) p2)
+loop t [] = success t []
+loop t = (loop-helper t) ∘ parse-one
 
--- would be nice to generalise this using variadic generics; Is this possible?
-parse-3 : {T1 T2 T3 Out : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> (T1 -> T2 -> T3 -> Out) -> Parser Out
-parse-3 {T1} {T2} {T3} {Out} p1 p2 p3 f =
-                                    let p12 = (parse-2 {T1} {T2} {Pair T1 T2} p1 p2 (λ x y -> x , y)) in
-                                    parse-2 p12 p3 (λ pair v3 -> f (Pair.fst pair) (Pair.snd pair) v3)
+parse-max-helper : ParserResult Term -> ParserResult Term
+parse-max-helper (success t1 l) = loop t1 l
+parse-max-helper error = error
 
-
-parse-4 : {T1 T2 T3 T4 Out : Set} -> Parser T1 -> Parser T2 -> Parser T3 -> Parser T4 -> (T1 -> T2 -> T3 -> T4 -> Out) -> Parser Out
-parse-4 {T1} {T2} {T3} {T4} {Out} p1 p2 p3 p4 f =
-                                        let p12 = (parse-2 {T1} {T2} {Pair T1 T2} p1 p2 (_,_)) in
-                                        let p34 = (parse-2 {T3} {T4} {Pair T3 T4} p3 p4 (_,_)) in
-                                                  parse-2 p12 p34 (λ pair12 pair34 -> f (Pair.fst pair12) (Pair.snd pair12) (Pair.fst pair34) (Pair.snd pair34))
-
-parse-term : Parser Ast.Term
-parse-term = {!!}
-
-parse-main : Parser Ast.Item
-parse-main = parse-4 (parse-string "main(") parse-ℕ (parse-string ") := ") parse-term (λ _ arity _ term -> Ast.Main arity term)
-
-{-
+parse-max = parse-max-helper ∘ parse-one
+----
 
 
-parse-let : Parser Ast.Item
-parse-let = {!!}
+PR-to-maybe : {T : Set} -> ParserResult T -> Maybe T
+PR-to-maybe (success x []) = just x
+PR-to-maybe _ = nothing
+
+parse : List Token -> Maybe Term
+parse = PR-to-maybe ∘ parse-max
 
 
-parse-impl : List Ast.Item -> Parser Ast.Program
-parse-impl x = {!!}
-
-parse : Parser Ast.Program
-parse = parse-impl []
-
--}
+parse-example = token-example M-map parse

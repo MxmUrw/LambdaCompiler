@@ -1,5 +1,6 @@
 module Parser.Token where
 
+open import Parser.Ast using (Str)
 open import Data.Nat using (ℕ; _+_; _*_; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -39,8 +40,6 @@ append (x ∷ l) y = x ∷ (append l y)
 rev : {T : Set} -> List T -> List T
 rev [] = []
 rev (x ∷ l) = append (rev l) x
-
-Str = List Char
 
 char→ℕ : Char -> Maybe ℕ
 char→ℕ '0' = just 0
@@ -162,5 +161,5 @@ tokenize-impl (c ∷ str) = tokenize-impl2 (char-info c) str
 tokenize s = tokenize-impl s ts-Default
 ----
 
-token-example = tokenize (toList "(\\xy. xy + ?0) ?12")
+token-example = tokenize (toList "(\\xy. + xy ?0) (?12)")
 -- run Space m n
