@@ -118,12 +118,10 @@ char-info : Char -> CharInfo
 char-info c = ((ident-info c) or (nat-info c) or (sign-info c) or (space-info c)) unwrap-or err
 
 -- tokenize
-{-# TERMINATING #-}
 tokenize : Str -> Maybe (List Token)
-{-# TERMINATING #-}
 tokenize-impl : Str -> TokenizerState -> Maybe (List Token)
-{-# TERMINATING #-}
 tokenize-impl2 : CharInfo -> Str -> TokenizerState -> Maybe (List Token)
+tokenize-impl2-default : CharInfo -> Str -> Maybe (List Token)
 
 digits-to-nat : List ℕ -> ℕ
 digits-to-nat [] = 0
@@ -141,19 +139,15 @@ on-back-default-usage-helper l (just x) = x ∷ l
 on-back-default-usage : TokenizerState -> List Token -> List Token
 on-back-default-usage ts l = on-back-default-usage-helper l (on-back-default ts)
 
- -- ident & digit proceed
+tokenize-impl2-default (sign x) str = (tokenize str) M-map (λ l -> x ∷ l)
+tokenize-impl2-default (ident x) str = tokenize-impl str (ts-Ident (x ∷ []))
+tokenize-impl2-default (digit x) str = tokenize-impl str (ts-Nat (x ∷ []))
+tokenize-impl2-default space str = tokenize-impl str ts-Default
+tokenize-impl2-default err str = nothing
+
 tokenize-impl2 (ident c) str (ts-Ident xs) = tokenize-impl str (ts-Ident (append xs c))
 tokenize-impl2 (digit d) str (ts-Nat xs) = tokenize-impl str (ts-Nat (append xs d))
-
- -- default
-tokenize-impl2 (sign x) str ts-Default = (tokenize str) M-map (λ l -> x ∷ l)
-tokenize-impl2 (ident x) str ts-Default = tokenize-impl str (ts-Ident (x ∷ []))
-tokenize-impl2 (digit x) str ts-Default = tokenize-impl str (ts-Nat (x ∷ []))
-tokenize-impl2 space str ts-Default = tokenize-impl str ts-Default
-tokenize-impl2 err str ts-Default = nothing
-
- -- ident & digit end
-tokenize-impl2 ci str ts = (tokenize-impl2 ci str ts-Default) M-map (on-back-default-usage ts)
+tokenize-impl2 ci str ts = (tokenize-impl2-default ci str) M-map (on-back-default-usage ts)
 
 tokenize-impl [] ts = just (on-back-default-usage ts [])
 tokenize-impl (c ∷ str) = tokenize-impl2 (char-info c) str
