@@ -36,9 +36,7 @@ _M-and-then_ : {T U : Set} -> Maybe T -> (T -> Maybe U) -> Maybe U
 nothing M-and-then _ = nothing
 just x M-and-then f = f x
 
-{-# TERMINATING #-}
 parse-one : Parser Term
-{-# TERMINATING #-}
 parse-max : Parser Term
 
 -- parse-paren
@@ -65,7 +63,7 @@ parse-atom (Token.QuestionMark ∷ Token.Nat n ∷ l) = success (Term.InputVar n
 parse-atom _ = error
 ----
 
-parse-one = parse-paren P-or parse-abstr P-or parse-atom
+parse-one l = (parse-paren l) PR-or (parse-abstr l) PR-or (parse-atom l)
 
 -- parse-max
 
