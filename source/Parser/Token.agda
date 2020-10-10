@@ -79,7 +79,7 @@ data TokenizerState : Set where
   ts-Ident : Str -> TokenizerState
   ts-Nat : List ℕ -> TokenizerState
 
--- ident-token
+-- ident-info
 ident-info-helper : Char -> Bool -> Maybe CharInfo
 ident-info-helper c true = just (ident c)
 ident-info-helper c false = nothing
@@ -88,7 +88,7 @@ ident-info : Char -> Maybe CharInfo
 ident-info c = ident-info-helper c (is-ident c)
 ----
 
--- nat-token
+-- nat-info
 nat-info-helper : Maybe ℕ -> Maybe CharInfo
 nat-info-helper = Data.Maybe.map digit
 
@@ -96,7 +96,7 @@ nat-info : Char -> Maybe CharInfo
 nat-info c = nat-info-helper (char→ℕ c)
 ----
 
--- sign-token
+-- sign-info
 sign-info : Char -> Maybe CharInfo
 sign-info '(' = just (sign ParenL)
 sign-info ')' = just (sign ParenR)
@@ -106,7 +106,7 @@ sign-info '?' = just (sign QuestionMark)
 sign-info _ = nothing
 ----
 
--- space-token
+-- space-info
 space-info : Char -> Maybe CharInfo
 space-info ' ' = just space
 space-info '\n' = just space
