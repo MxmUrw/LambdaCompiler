@@ -11,9 +11,21 @@ open import Foreign.Haskell.Pair using (Pair; _,_)
 
 
 -- does this exist in the stdlib?
-unwrap-or : {T : Set} -> Maybe T -> T -> T
-unwrap-or (just x) _ = x
-unwrap-or nothing fallback = fallback
+pow : ℕ -> ℕ -> ℕ
+pow x 0 = 1
+pow x (suc y) = x * pow x y
+
+len : {T : Set} -> List T -> ℕ
+len [] = 0
+len (x ∷ l) = suc (len l)
+
+_unwrap-or_ : {T : Set} -> Maybe T -> T -> T
+_unwrap-or_ (just x) _ = x
+_unwrap-or_ nothing fallback = fallback
+
+_M-map_ : {T U : Set} -> Maybe T -> (T -> U) -> Maybe U
+nothing M-map _ = nothing
+just x M-map f = just (f x)
 
 _or_ : {T : Set} -> Maybe T -> Maybe T -> Maybe T
 _or_ (just x) _ = just x
@@ -47,9 +59,12 @@ data Token : Set where
   Dot : Token
   Equals : Token
 
-TokenOrSpace = Maybe Token
-ErrorOr : (T : Set) -> Set
-ErrorOr x = Maybe x
+data CharInfo : Set where
+  sign : Token -> CharInfo
+  ident : Char -> CharInfo
+  digit : ℕ -> CharInfo
+  space : CharInfo
+  err : CharInfo
 
 data TokenizerState : Set where
   ts-Default : TokenizerState
@@ -57,47 +72,83 @@ data TokenizerState : Set where
   ts-Nat : List ℕ -> TokenizerState
 
 -- ident-token
-ident-token-helper : Char -> Bool -> Maybe Token
-ident-token-helper c true = just (Ident (c ∷ []))
-ident-token-helper c false = nothing
+ident-info-helper : Char -> Bool -> Maybe CharInfo
+ident-info-helper c true = just (ident c)
+ident-info-helper c false = nothing
 
-ident-token : Char -> Maybe Token
-ident-token c = ident-token-helper c (is-ident c)
+ident-info : Char -> Maybe CharInfo
+ident-info c = ident-info-helper c (is-ident c)
 ----
 
 -- nat-token
-nat-token-helper : Char -> Maybe ℕ -> Maybe Token
-nat-token-helper _ = Data.Maybe.map Nat
+nat-info-helper : Maybe ℕ -> Maybe CharInfo
+nat-info-helper = Data.Maybe.map digit
 
-nat-token : Char -> Maybe Token
-nat-token c = nat-token-helper c (char→ℕ c)
+nat-info : Char -> Maybe CharInfo
+nat-info c = nat-info-helper (char→ℕ c)
 ----
 
 -- sign-token
-sign-token : Char -> Maybe Token
-sign-token '(' = just ParenL
-sign-token ')' = just ParenR
-sign-token '\\' = just Backslash
-sign-token '.' = just Dot
-sign-token '=' = just Equals
-sign-token _ = nothing
+sign-info : Char -> Maybe CharInfo
+sign-info '(' = just (sign ParenL)
+sign-info ')' = just (sign ParenR)
+sign-info '\\' = just (sign Backslash)
+sign-info '.' = just (sign Dot)
+sign-info '=' = just (sign Equals)
+sign-info _ = nothing
 ----
 
-tokenize-nonspace-char : Char -> Maybe Token
-tokenize-nonspace-char c = (ident-token c) or (nat-token c) or (sign-token c)
+-- space-token
+space-info : Char -> Maybe CharInfo
+space-info ' ' = just space
+space-info '\n' = just space
+space-info '\t' = just space
+space-info _ = nothing
+--
 
-tokenize-char : Char -> ErrorOr TokenOrSpace
-tokenize-char ' ' = just nothing
-tokenize-char c = Data.Maybe.map just (tokenize-nonspace-char c)
+char-info : Char -> CharInfo
+char-info c = ((ident-info c) or (nat-info c) or (sign-info c) or (space-info c)) unwrap-or err
 
-tokenize-impl2 : Token -> Str -> TokenizerState -> Maybe (List Token)
-tokenize-impl2 t str ts-Default = {!!}
-tokenize-impl2 t str (ts-Ident x) = {!!}
-tokenize-impl2 t str (ts-Nat x) = {!!}
-
-tokenize-impl : Str -> TokenizerState -> Maybe (List Token)
-tokenize-impl [] ts = {!!}
--- tokenize-impl (c ∷ str) ts = Data.Maybe.map (λ mt -> unwrap-or (Data.Maybe.map (λ t -> tokenize-impl2 t str ts) mt) []) (tokenize-char c)
-
+-- tokenize
+{-# TERMINATING #-}
 tokenize : Str -> Maybe (List Token)
+{-# TERMINATING #-}
+tokenize-impl : Str -> TokenizerState -> Maybe (List Token)
+{-# TERMINATING #-}
+tokenize-impl2 : CharInfo -> Str -> TokenizerState -> Maybe (List Token)
+
+digits-to-nat : List ℕ -> ℕ
+digits-to-nat [] = 0
+digits-to-nat (x ∷ l) = (digits-to-nat l) + (x * (pow 10 (len l)))
+
+on-back-default : TokenizerState -> Maybe Token
+on-back-default ts-Default = nothing
+on-back-default (ts-Ident x) = just (Ident x)
+on-back-default (ts-Nat x) = just (Nat (digits-to-nat x))
+
+on-back-default-usage-helper : List Token -> Maybe Token -> List Token
+on-back-default-usage-helper l nothing = l
+on-back-default-usage-helper l (just x) = x ∷ l
+
+on-back-default-usage : TokenizerState -> List Token -> List Token
+on-back-default-usage ts l = on-back-default-usage-helper l (on-back-default ts)
+
+-- ident & digit proceed
+tokenize-impl2 (ident c) str (ts-Ident xs) = tokenize-impl str (ts-Ident (c ∷ xs))
+tokenize-impl2 (digit d) str (ts-Nat xs) = tokenize-impl str (ts-Nat (d ∷ xs))
+
+-- default
+tokenize-impl2 (sign x) str ts-Default = (tokenize str) M-map (λ l -> x ∷ l)
+tokenize-impl2 (ident x) str ts-Default = tokenize-impl str (ts-Ident (x ∷ []))
+tokenize-impl2 (digit x) str ts-Default = tokenize-impl str (ts-Nat (x ∷ []))
+tokenize-impl2 space str ts-Default = tokenize-impl str ts-Default
+tokenize-impl2 err str ts-Default = nothing
+
+-- ident & digit end
+tokenize-impl2 ci str ts = (tokenize-impl2 ci str ts-Default) M-map (on-back-default-usage ts)
+
+tokenize-impl [] ts = just (on-back-default-usage ts [])
+tokenize-impl (c ∷ str) = tokenize-impl2 (char-info c) str
+
 tokenize s = tokenize-impl s ts-Default
+----
