@@ -56,6 +56,7 @@ char→ℕ '9' = just 9
 char→ℕ _ = nothing
 
 is-ident : Char -> Bool
+is-ident '+' = true
 is-ident = Data.Char.isAlpha
 
 data Token : Set where
@@ -119,7 +120,7 @@ char-info c = ((ident-info c) or (nat-info c) or (sign-info c) or (space-info c)
 
 -- tokenize
 {-# TERMINATING #-}
-tokenize-stack : Str -> Maybe (List Token)
+tokenize : Str -> Maybe (List Token)
 {-# TERMINATING #-}
 tokenize-impl : Str -> TokenizerState -> Maybe (List Token)
 {-# TERMINATING #-}
@@ -142,11 +143,11 @@ on-back-default-usage : TokenizerState -> List Token -> List Token
 on-back-default-usage ts l = on-back-default-usage-helper l (on-back-default ts)
 
  -- ident & digit proceed
-tokenize-impl2 (ident c) str (ts-Ident xs) = tokenize-impl str (ts-Ident (c ∷ xs))
-tokenize-impl2 (digit d) str (ts-Nat xs) = tokenize-impl str (ts-Nat (d ∷ xs))
+tokenize-impl2 (ident c) str (ts-Ident xs) = tokenize-impl str (ts-Ident (append xs c))
+tokenize-impl2 (digit d) str (ts-Nat xs) = tokenize-impl str (ts-Nat (append xs d))
 
  -- default
-tokenize-impl2 (sign x) str ts-Default = (tokenize-stack str) M-map (λ l -> x ∷ l)
+tokenize-impl2 (sign x) str ts-Default = (tokenize str) M-map (λ l -> x ∷ l)
 tokenize-impl2 (ident x) str ts-Default = tokenize-impl str (ts-Ident (x ∷ []))
 tokenize-impl2 (digit x) str ts-Default = tokenize-impl str (ts-Nat (x ∷ []))
 tokenize-impl2 space str ts-Default = tokenize-impl str ts-Default
@@ -158,8 +159,8 @@ tokenize-impl2 ci str ts = (tokenize-impl2 ci str ts-Default) M-map (on-back-def
 tokenize-impl [] ts = just (on-back-default-usage ts [])
 tokenize-impl (c ∷ str) = tokenize-impl2 (char-info c) str
 
-tokenize-stack s = tokenize-impl s ts-Default
-
-tokenize : Str -> Maybe (List Token)
-tokenize s = tokenize-stack s M-map rev
+tokenize s = tokenize-impl s ts-Default
 ----
+
+token-example = tokenize (toList "(\\xy. xy + ?0) ?12")
+-- run Space m n
