@@ -82,7 +82,7 @@ data Value where
   makeClosure : ∀{Γ Δ A} -> Function Γ (ι A) -> Value Δ (Closure (Γ ⇉ A))
   weak : ∀{Δ Γ A} -> Value Γ A -> Value (Γ ++ Δ) A
   weak1 : ∀{B Γ A} -> Value (Γ) A -> Value (Γ ,, B) A
-  inline : ∀{Γ A} -> Function Γ A -> Value Γ A
+  inline : ∀{Γ Δ A} -> ValueSeq Γ (Δ ,, A) -> Value Γ A
   write2 : ∀{Γ As A As2 B} -> A ∈ Γ -> (Closure ((As ++ (([] ,, A) ++ As2)) ⇉ B)) ∈ Γ -> Value Γ (Closure (As ++ As2 ⇉ B))
   proj : ∀{Γ A} -> A ∈ Γ -> Value Γ A
 
@@ -142,7 +142,7 @@ eval (call x) e = getCtx x e tt
 eval (makeClosure f) _ e2 = evalFun f e2
 eval (weak {Δ = D} {Γ = G} v) e = eval v (evalWeak e)
 eval (weak1 v) (_ , e) = eval v e
-eval (inline x) e = evalFun x e
+eval (inline x) e = evalSeq x e .fst
 eval (write2 t s) e e2 =
   let vt = getCtx t e
       vs = getCtx s e
@@ -203,7 +203,7 @@ writeCtx2 {G0} {x :: G} {G1} {D} {A} c g =
       p = init {Γ = D}
           & qq
           & writeCtx2 {Γ₀ = G0} {Γ = G} {Γ₁ = G1} this (trans-⊆ (skip refl) (trans-⊆ g (skip refl)))
-  in inline (ret p)
+  in inline p
 
 writeCtx : ∀{Γ₀ Γ Ξ A} -> Closure (Ξ ⇉ A) ∈ Γ₀ -> Value (Γ₀ ++ (Γ ++ Ξ)) (Closure ([] ⇉ A))
 writeCtx {Γ₀} {Γ} {Ξ} {A} c with writeCtx2 {Γ₀ = []} {Γ = Ξ} {Γ₁ = []} {Δ = Γ₀ ++ (Γ ++ Ξ)}
@@ -222,13 +222,13 @@ compileVal {Γ} {(_ ⇉ _)} (app t s) =
           & compileVal t
           & weak1 (compileVal s)
           & write this (next this)
-  in inline (ret p)
+  in inline p
 compileVal {Γ} {.((_ :: _) ⇉ _)} (lam t) =
   let p = init {Γ = lmr (Γ)}
            & makeClosure (compileBaseFun t)
            & writeCtx2 {Γ₀ = [] ,, _} this (skip refl)
 
-  in inline (ret p)
+  in inline p
 compileVal {Γ} {A} (var x) = proj (mr-∈ x)
 
 
