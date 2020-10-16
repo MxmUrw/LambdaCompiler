@@ -4,8 +4,6 @@ module Compiler.ClosureIR8 where
 
 open import Base.Prelude
 
--- List : 𝒰 ℓ -> 𝒰 ℓ
--- List A = ∑ Vec A
 
 data BaseTy : 𝒰₀ where
   NN : BaseTy
@@ -14,26 +12,12 @@ data Ty : 𝒰₀ where
   ι : BaseTy -> Ty
   _⇒_ : Ty -> Ty -> Ty
 
--- _,,_ : ∀{A : 𝒰 ℓ} -> List A -> A -> List A
--- (_ , Γ) ,, A = (_ , A ∷ Γ)
-
--- _::_ : ∀{A : 𝒰 ℓ} -> A -> List A -> List A
--- A :: (_ , Γ) = (_ , A ∷ Γ)
-
 
 infixl 55 _,,_
--- syntax n , Γ ,, A = suc n , A ∷ Γ
--- pattern (A ∷ (n , Γ)) = 
-
--- Ctx = List Ty
 
 infixr 70 _⇒_
 infixr 50 _⊢2_
 
--- _∈_ : ∀{A : 𝒰 ℓ} (e : A) (v : List A) -> 𝒰 ℓ -- -> (i : Fin (fst v)) -> A
--- _∈_ e (_ , v) = ∑ λ i -> lookup v i == e
-
--- syntax Elem V i = i ∈ V
 
 pattern empty = (_ , [])
 
@@ -56,8 +40,6 @@ data _∈_ {A : 𝒰 ℓ} : A -> List A -> 𝒰₀ where
   this : ∀{a as} -> a ∈ (a :: as)
   next : ∀{a b as} -> a ∈ as -> a ∈ (b :: as)
 
--- _∈_ = {!!}
-
 
 data RetTy : 𝒰₀
 data Ty2 : 𝒰₀
@@ -79,12 +61,6 @@ data Ty2 where
 
 
 
-
--- CT : Ty -> Ctx × BaseTy
--- CT (ι A) = empty , A
--- CT (A ⇒ B) =
---   let (As , R) = CT B
---   in (As ,, A , R)
 
 data _⊢2_ : Ctx2 -> Ty2 -> 𝒰₀ where
   app : ∀{Γ A Bs B} -> Γ ⊢2 ((A :: Bs) ⇉ B) -> Γ ⊢2 A -> Γ ⊢2 (Bs ⇉ B)
@@ -178,16 +154,10 @@ eval (proj x) e = getCtx x e
 infixr 20 _::_
 
 lmr : Ctx2 -> RCtx
--- lmr-with : Ctx2 -> Ctx2 -> RCtx
 
 mr : Ty2 -> RetTy
 mr (A ⇉ B) = Closure (lmr A ⇉ B)
 
--- mr-with : Ctx2 -> Ty2 -> RetTy
--- mr-with Γ (A ⇉ B) = Closure (lmr Γ) (lmr-with Γ A ⇉ B)
-
--- lmr-with Γ [] = []
--- lmr-with Γ (A :: As) = mr-with Γ A :: lmr-with Γ As
 
 lmr [] = []
 lmr (A :: As) = mr A :: lmr As
