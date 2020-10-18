@@ -9,7 +9,7 @@ open import Agda.Builtin.Equality public using (refl) renaming (_≡_ to _==_)
 
 -------------------------------
 -- List
-open import Data.List.Base public using (List ; []) renaming (_∷_ to infixr 20 _::_ ; _++_ to infixl 50 _++_)
+open import Data.List.Base public using (List ; []) renaming (_∷_ to infixr 20 _::_ ; _++_ to infixl 50 _++_ ; map to map-List)
 
 infixl 55 _,,_
 pattern _,,_ A Bs = _::_ Bs A

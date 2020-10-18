@@ -60,6 +60,22 @@ data _⊢uc_ : UncurCtx -> UncurTy -> 𝒰₀ where
   var : ∀{Γ A} -> A ∈ Γ -> Γ ⊢uc A
 
 
+normal→uc-Ctx : Ctx -> UncurCtx
+normal→uc-Ty : Ty -> UncurTy
+
+normal→uc-Ctx = map-List normal→uc-Ty
+
+normal→uc-Ty (ι x) = [] ⇉ x
+normal→uc-Ty (A ⇒ B) with normal→uc-Ty B
+... | (Xs ⇉ X) = (normal→uc-Ty A :: Xs) ⇉ X
+
+-- TODO: Create a function from usual lambda terms to UC lambda terms
+-- normal→uc-Te : ∀{Γ A} -> Γ ⊢ A -> normal→uc-Ctx Γ ⊢uc normal→uc-Ty A
+-- normal→uc-Te (app t s) = {!!}
+-- normal→uc-Te (lam t) = {!!}
+-- normal→uc-Te (var x) = {!!}
+
+
 -----------------------------------------------------
 -- The "Closure Intermediate Representation"
 
