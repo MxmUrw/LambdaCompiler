@@ -4,8 +4,23 @@ module Base.Imports where
 -------------------------------
 -- Universes and equality
 
-open import Agda.Primitive renaming (Set to 𝒰 ; Level to ULevel ; lsuc to _⁺) public
+open import Agda.Primitive renaming (Level to ULevel ; lsuc to _⁺) public
 open import Agda.Builtin.Equality public using (refl) renaming (_≡_ to _==_)
+
+variable
+  ℓ : ULevel
+  ℓ' : ULevel
+  ℓ'' : ULevel
+  𝑖 𝑗 𝑘 𝑙 : ULevel
+
+ℓ₀ = lzero
+ℓ₁ = ℓ₀ ⁺
+
+𝒰 : (i : ULevel) -> Set (i ⁺)
+𝒰 i = Set i
+
+𝒰₀ = 𝒰 ℓ₀
+𝒰₁ = 𝒰 ℓ₁
 
 -------------------------------
 -- List
@@ -35,15 +50,6 @@ open import Data.Empty public
 --------------------------------------------------------------------------------
 -- Custom notation
 --------------------------------------------------------------------------------
-
-variable
-  ℓ : ULevel
-  ℓ' : ULevel
-  ℓ'' : ULevel
-  𝑖 𝑗 𝑘 𝑙 : ULevel
-
-ℓ₀ = lzero
-ℓ₁ = ℓ₀ ⁺
 
 
 ∑_ : {A : 𝒰 ℓ} -> (B : A -> 𝒰 ℓ') -> 𝒰 (ℓ ⊔ ℓ')
